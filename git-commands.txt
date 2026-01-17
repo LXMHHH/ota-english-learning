@@ -1,0 +1,33 @@
+# Git 部署命令（按顺序执行）
+
+# 1. 切换到项目目录（如果还没在的话）
+cd ota-english-cloud
+
+# 2. 将分支重命名为 main（推荐，GitHub现在用main）
+git branch -m main
+
+# 3. 添加所有文件到Git
+git add .
+
+# 4. 提交文件
+git commit -m "Initial commit: OTA English Learning App"
+
+# 5. 连接到你的GitHub仓库（替换成你的用户名）
+git remote add origin https://github.com/你的GitHub用户名/ota-english-learning.git
+
+# 6. 推送到GitHub
+git push -u origin main
+
+---
+
+# 如果第5步出错（remote已存在），先删除再添加：
+git remote remove origin
+git remote add origin https://github.com/你的GitHub用户名/ota-english-learning.git
+git push -u origin main
+
+---
+
+# 检查状态的命令：
+git status          # 查看当前状态
+git remote -v       # 查看远程仓库地址
+git branch          # 查看当前分支
