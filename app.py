@@ -13,6 +13,7 @@ OTA测试工程师英语学习工具 - 增强版
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 import random
 import json
 import re
@@ -537,6 +538,89 @@ if 'quiz_answered' not in st.session_state:
     st.session_state.quiz_answered = False
 
 
+# ==================== 语音按钮辅助函数 ====================
+def create_speak_button(english, chinese, button_id, button_text="🔊 朗读"):
+    """创建可点击的语音按钮"""
+    # 转义特殊字符
+    english_safe = english.replace("'", "\\'").replace('"', '\\"').replace('\n', ' ')
+    chinese_safe = chinese.replace("'", "\\'").replace('"', '\\"').replace('\n', ' ')
+    
+    html_code = f"""
+    <button 
+        onclick="speakWord_{button_id}()" 
+        style="background: #4CAF50; color: white; border: none; padding: 8px 16px; 
+               border-radius: 8px; cursor: pointer; font-size: 14px; margin: 5px 2px;
+               transition: all 0.3s;"
+        onmouseover="this.style.background='#45a049'; this.style.transform='scale(1.05)';"
+        onmouseout="this.style.background='#4CAF50'; this.style.transform='scale(1)';">
+        {button_text}
+    </button>
+    <script>
+    function speakWord_{button_id}() {{
+        if ('speechSynthesis' in window) {{
+            window.speechSynthesis.cancel();
+            
+            const utterance1 = new SpeechSynthesisUtterance('{english_safe}');
+            utterance1.lang = 'en-US';
+            utterance1.rate = 0.7;  // 降低速度，更清晰
+            utterance1.pitch = 1.0;  // 标准音调
+            utterance1.volume = 1.0;  // 最大音量
+            
+            const utterance2 = new SpeechSynthesisUtterance('{chinese_safe}');
+            utterance2.lang = 'zh-CN';
+            utterance2.rate = 0.75;  // 中文稍快一点
+            utterance2.pitch = 1.0;
+            utterance2.volume = 1.0;
+            
+            window.speechSynthesis.speak(utterance1);
+            
+            utterance1.onend = function() {{
+                setTimeout(function() {{
+                    window.speechSynthesis.speak(utterance2);
+                }}, 500);  // 增加停顿时间
+            }};
+        }} else {{
+            alert('您的浏览器不支持语音功能');
+        }}
+    }}
+    </script>
+    """
+    components.html(html_code, height=50)
+
+def create_speak_button_english_only(text, button_id, button_text="🔊 朗读例句"):
+    """创建只读英文的语音按钮"""
+    text_safe = text.replace("'", "\\'").replace('"', '\\"').replace('\n', ' ')
+    
+    html_code = f"""
+    <button 
+        onclick="speakEnglish_{button_id}()" 
+        style="background: #4CAF50; color: white; border: none; padding: 8px 16px; 
+               border-radius: 8px; cursor: pointer; font-size: 14px; margin: 5px 2px;
+               transition: all 0.3s;"
+        onmouseover="this.style.background='#45a049'; this.style.transform='scale(1.05)';"
+        onmouseout="this.style.background='#4CAF50'; this.style.transform='scale(1)';">
+        {button_text}
+    </button>
+    <script>
+    function speakEnglish_{button_id}() {{
+        if ('speechSynthesis' in window) {{
+            window.speechSynthesis.cancel();
+            
+            const utterance = new SpeechSynthesisUtterance('{text_safe}');
+            utterance.lang = 'en-US';
+            utterance.rate = 0.7;  // 降低速度，更清晰
+            utterance.pitch = 1.0;  // 标准音调
+            utterance.volume = 1.0;  // 最大音量
+            
+            window.speechSynthesis.speak(utterance);
+        }} else {{
+            alert('您的浏览器不支持语音功能');
+        }}
+    }}
+    </script>
+    """
+    components.html(html_code, height=50)
+
 # ==================== 页面函数 ====================
 
 def show_home():
@@ -597,8 +681,6 @@ def show_home():
     st.markdown("---")
     st.markdown("### 💡 今日推荐")
     word = random.choice(vocab)
-    english_clean = word['english'].replace("'", "\\'").replace('"', '\\"')
-    chinese_clean = word['chinese'].replace("'", "\\'").replace('"', '\\"')
     
     st.markdown(f"""
     <div class="word-card">
@@ -606,11 +688,11 @@ def show_home():
         <div style="font-size: 14px; opacity: 0.9;">{word['phonetic']}</div>
         <div style="font-size: 20px; margin: 10px 0;">{word['chinese']}</div>
         <div style="font-size: 13px; opacity: 0.8;">💡 {word['example']}</div>
-        <button class="speak-btn" onclick="speakWord('{english_clean}', '{chinese_clean}')">
-            🔊 朗读
-        </button>
     </div>
     """, unsafe_allow_html=True)
+    
+    # 添加语音按钮
+    create_speak_button(word['english'], word['chinese'], "home_recommend")
 
 
 def show_vocabulary():
@@ -681,18 +763,11 @@ def show_vocabulary():
     st.markdown("---")
     
     # 显示当前页的单词
-    for word in words[start_idx:end_idx]:
+    for idx, word in enumerate(words[start_idx:end_idx]):
         with st.expander(f"**{word['english']}** - {word['chinese']}"):
             # 添加语音按钮
-            english_clean = word['english'].replace("'", "\\'").replace('"', '\\"')
-            chinese_clean = word['chinese'].replace("'", "\\'").replace('"', '\\"')
-            example_clean = word.get('example', '').replace("'", "\\'").replace('"', '\\"')
-            
-            st.markdown(f"""
-            <button class="speak-btn" onclick="speakWord('{english_clean}', '{chinese_clean}')">
-                🔊 朗读单词
-            </button>
-            """, unsafe_allow_html=True)
+            button_id = f"vocab_{start_idx + idx}"
+            create_speak_button(word['english'], word['chinese'], button_id, "🔊 朗读单词")
             
             if word.get('phonetic'):
                 st.markdown(f"**发音:** {word['phonetic']}")
@@ -700,11 +775,8 @@ def show_vocabulary():
             if word.get('example'):
                 st.markdown(f"**例句:** {word['example']}")
                 # 例句朗读按钮
-                st.markdown(f"""
-                <button class="speak-btn" onclick="speakEnglish('{example_clean}')">
-                    🔊 朗读例句
-                </button>
-                """, unsafe_allow_html=True)
+                example_button_id = f"example_{start_idx + idx}"
+                create_speak_button_english_only(word['example'], example_button_id, "🔊 朗读例句")
             mastery = st.session_state.progress.get("mastery", {}).get(word["id"], 0)
             st.progress(mastery / 100)
             st.caption(f"掌握程度: {mastery}%")
@@ -775,20 +847,18 @@ def show_phrases():
     
     st.markdown("---")
     
-    for phrase in items[start_idx:end_idx]:
-        english_clean = phrase['english'].replace("'", "\\'").replace('"', '\\"')
-        chinese_clean = phrase['chinese'].replace("'", "\\'").replace('"', '\\"')
-        
+    for idx, phrase in enumerate(items[start_idx:end_idx]):
         st.markdown(f"""
         <div class="phrase-card">
             <div style="font-size: 15px; margin-bottom: 8px;">{phrase['english']}</div>
             <div style="font-size: 14px; opacity: 0.9;">{phrase['chinese']}</div>
             <div style="font-size: 12px; opacity: 0.7; margin-top: 5px;">📍 {phrase['scenario']}</div>
-            <button class="speak-btn" onclick="speakWord('{english_clean}', '{chinese_clean}')">
-                🔊 朗读
-            </button>
         </div>
         """, unsafe_allow_html=True)
+        
+        # 添加语音按钮
+        button_id = f"phrase_{start_idx + idx}"
+        create_speak_button(phrase['english'], phrase['chinese'], button_id)
 
 
 def show_flashcards():
@@ -822,9 +892,6 @@ def show_flashcards():
     st.caption(f"进度: {index + 1} / {len(words)}")
     
     if st.session_state.flashcard_flipped:
-        english_clean = word['english'].replace("'", "\\'").replace('"', '\\"')
-        chinese_clean = word['chinese'].replace("'", "\\'").replace('"', '\\"')
-        
         st.markdown(f"""
         <div class="flashcard">
             <div style="font-size: 22px; margin-bottom: 10px;">{word['english']}</div>
@@ -832,11 +899,41 @@ def show_flashcards():
             <div style="font-size: 24px; margin: 15px 0;">{word['chinese']}</div>
             <div style="font-size: 13px; opacity: 0.8;">💡 {word['example']}</div>
         </div>
-        <script>
-        // 翻转后自动播放
-        speakWord('{english_clean}', '{chinese_clean}');
-        </script>
         """, unsafe_allow_html=True)
+        
+        # 闪卡翻转后自动播放
+        english_safe = word['english'].replace("'", "\\'")
+        chinese_safe = word['chinese'].replace("'", "\\'")
+        
+        flashcard_html = f"""
+        <script>
+        (function() {{
+            if ('speechSynthesis' in window) {{
+                window.speechSynthesis.cancel();
+                
+                const utterance1 = new SpeechSynthesisUtterance('{english_safe}');
+                utterance1.lang = 'en-US';
+                utterance1.rate = 0.7;  // 降低速度，更清晰
+                utterance1.pitch = 1.0;  // 标准音调
+                utterance1.volume = 1.0;  // 最大音量
+                
+                const utterance2 = new SpeechSynthesisUtterance('{chinese_safe}');
+                utterance2.lang = 'zh-CN';
+                utterance2.rate = 0.75;  // 中文稍快一点
+                utterance2.pitch = 1.0;
+                utterance2.volume = 1.0;
+                
+                window.speechSynthesis.speak(utterance1);
+                utterance1.onend = function() {{
+                    setTimeout(function() {{
+                        window.speechSynthesis.speak(utterance2);
+                    }}, 500);  // 增加停顿时间
+                }};
+            }}
+        }})();
+        </script>
+        """
+        components.html(flashcard_html, height=0)
     else:
         st.markdown(f"""
         <div class="flashcard">
@@ -1376,56 +1473,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-# ==================== 语音功能 JavaScript ====================
-st.markdown("""
-<script>
-// 语音播放函数
-function speak(text, lang) {
-    if ('speechSynthesis' in window) {
-        // 停止当前播放
-        window.speechSynthesis.cancel();
-        
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = lang; // 'en-US' 或 'zh-CN'
-        utterance.rate = 0.85; // 语速 (0.1-10, 默认1)
-        utterance.pitch = 1; // 音调 (0-2, 默认1)
-        utterance.volume = 1; // 音量 (0-1, 默认1)
-        
-        window.speechSynthesis.speak(utterance);
-    } else {
-        alert('您的浏览器不支持语音功能');
-    }
-}
-
-// 朗读单词(先英文后中文)
-function speakWord(english, chinese) {
-    // 先读英文
-    speak(english, 'en-US');
-    
-    // 计算延迟时间(根据英文长度)
-    const delay = (english.length * 80) + 800; // 每个字符80ms + 800ms缓冲
-    
-    // 延迟后读中文
-    setTimeout(() => {
-        speak(chinese, 'zh-CN');
-    }, delay);
-}
-
-// 只朗读英文
-function speakEnglish(text) {
-    speak(text, 'en-US');
-}
-
-// 只朗读中文
-function speakChinese(text) {
-    speak(text, 'zh-CN');
-}
-
-// 停止播放
-function stopSpeaking() {
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-    }
-}
-</script>
-""", unsafe_allow_html=True)
